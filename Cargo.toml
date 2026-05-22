@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["cli"]
+
+[profile.release]
+# LTO + codegen-units=1 minimize binary size but spike memory during linking.
+# Disabled here since the CLI is tiny (clap + serde + toml); the savings would
+# be negligible compared to the 8GB+ memory spike on tight machines.
+lto = false
+codegen-units = 4
+strip = "symbols"

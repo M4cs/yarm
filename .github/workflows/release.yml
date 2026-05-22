@@ -1,0 +1,89 @@
+name: release
+
+# Fires on tag push of the form `v*` (e.g. `v0.1.0`). Builds the universal
+# arm64+arm64e dylib + the Rust CLI on an Apple Silicon runner, packages
+# everything into a tarball, attaches it to the GitHub release, and emits the
+# brew formula stanza so you can paste it into the M4cs/homebrew-yarm tap.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # macos-15 = Apple Silicon (Sequoia). When GitHub adds a macos-26
+    # (Tahoe) runner image bump this — the build itself targets Tahoe's
+    # SkyLight surface so anything older won't actually run.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build dylib
+        run: make -C dylib
+
+      - name: Build CLI
+        run: cargo build --release -j 1
+
+      - name: Stage release artifacts
+        id: stage
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          OUT="yarm-${VERSION}-macos-universal"
+          mkdir -p "$OUT/lib" "$OUT/bin" "$OUT/share/yarm"
+          cp dylib/libyarm.dylib    "$OUT/lib/"
+          cp target/release/yarm    "$OUT/bin/"
+          cp agent/com.maxbridgland.yarm.plist "$OUT/share/yarm/"
+          cp LICENSE README.md install.sh Makefile "$OUT/"
+          tar -czf "${OUT}.tar.gz" "$OUT"
+          echo "tarball=${OUT}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256 for source tarball
+        id: sha
+        # The source tarball is the one brew formulas typically point at —
+        # GitHub auto-generates it for the tag. We compute its sha to make
+        # bumping the formula a copy/paste.
+        run: |
+          SRC_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz"
+          curl -sLo /tmp/src.tar.gz "$SRC_URL"
+          SHA=$(shasum -a 256 /tmp/src.tar.gz | awk '{print $1}')
+          echo "src_sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Print formula update snippet
+        run: |
+          cat <<EOF
+          # Paste this into M4cs/homebrew-yarm Formula/yarm.rb:
+          url "https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz"
+          sha256 "${{ steps.sha.outputs.src_sha256 }}"
+          version "${{ steps.stage.outputs.version }}"
+          EOF
+
+      - name: Create / update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.stage.outputs.tarball }}
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            ```sh
+            brew tap M4cs/yarm
+            brew install yarm
+            ```
+
+            ## Formula stanza for `M4cs/homebrew-yarm`
+
+            ```ruby
+            url "https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz"
+            sha256 "${{ steps.sha.outputs.src_sha256 }}"
+            version "${{ steps.stage.outputs.version }}"
+            ```
+
+            See [the README](https://github.com/${{ github.repository }}/blob/main/README.md) for requirements (macOS Tahoe + SIP off) and the safety notes.

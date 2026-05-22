@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Reference template. The `yarm install` CLI writes a copy of this (with the
+  resolved dylib path substituted in) to ~/Library/LaunchAgents and bootstraps
+  it into gui/<uid>. Kept here so brew users / sysadmins can audit it without
+  reading the Rust source.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.maxbridgland.yarm.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/launchctl</string>
+        <string>setenv</string>
+        <string>DYLD_INSERT_LIBRARIES</string>
+        <string>/opt/homebrew/lib/libyarm.dylib</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

@@ -1,0 +1,29 @@
+# Rust build output
+/target
+/Cargo.lock.bak
+
+# Built dylib (built by `make` / install.sh; not checked in)
+/dylib/libyarm.dylib
+
+# macOS metadata
+.DS_Store
+
+# Editor caches
+.vscode/
+.idea/
+*.swp
+
+# Local Claude/agent settings
+.claude/
+.codex/
+.cursor/
+
+# Build / install scratch files
+*.tmp
+*.bak
+
+# Local config / test artifacts that might end up in the repo dir
+~/.config/yarm/
+
+# Crash reports if dragged into the repo while triaging
+*.ips
