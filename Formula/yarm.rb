@@ -1,35 +1,33 @@
-# Canonical formula for the M4cs/homebrew-yarm tap.
+# yarm — uniform window corner radius for macOS Tahoe.
 #
-# This file is the source of truth. The copy at
-# https://github.com/M4cs/homebrew-yarm/blob/main/Formula/yarm.rb is kept in
-# sync on every release. On a new tag:
+# This is the tap formula for the M4cs/homebrew-yarm tap. The canonical
+# source lives at https://github.com/M4cs/yarm/blob/main/Formula/yarm.rb;
+# this file is kept in sync on every release.
 #
-#   1. `git tag vX.Y.Z && git push --tags` in this repo.
-#   2. .github/workflows/release.yml prints a stable `url` / `sha256` /
-#      `version` stanza.
-#   3. Paste it into the `stable` block below AND into the tap's copy.
-#   4. Commit + push both repos.
-#
-# Install (after a tagged release):
+# Install:
 #   brew tap M4cs/yarm
-#   brew install yarm
+#   brew install yarm           # once v0.1.0 is tagged; until then:
+#   brew install --HEAD yarm    # builds from main
 #   yarm install && yarm start
 #
-# Install (pre-release, builds from main):
-#   brew tap M4cs/yarm
-#   brew install --HEAD yarm
+# Update on a new tag:
+#   1. CI in M4cs/yarm prints an updated url/sha256/version stanza after a
+#      tag push. Paste those three lines into the `stable` block below.
+#   2. Commit + push this repo.
+#   3. Users get the update on `brew upgrade yarm`.
 
 class Yarm < Formula
   desc "Uniform window corner radius for macOS Tahoe"
   homepage "https://github.com/M4cs/yarm"
   license "MIT"
 
-  # No stable release yet. Uncomment + fill from CI output after the first
-  # `git tag v0.1.0 && git push --tags`.
+  # No stable release yet — uncomment + fill from CI output after the first
+  # `git tag v0.1.0 && git push --tags` in the main repo.
   #
-  # url "https://github.com/M4cs/yarm/archive/refs/tags/v0.1.0.tar.gz"
-  # sha256 "<computed by .github/workflows/release.yml>"
-  # version "0.1.0"
+  url "https://github.com/M4cs/yarm/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "e3f2c84cdba9c38ceda53fb5888147b421068066a447b47b668ef268a30ba975"
+  version "0.1.0"
+
 
   head "https://github.com/M4cs/yarm.git", branch: "main"
 
@@ -38,6 +36,10 @@ class Yarm < Formula
   depends_on arch: :arm64
 
   def install
+    # Brew's superenv strips `-arch arm64e` by default — without this opt-in,
+    # the resulting libyarm.dylib is arm64-only and cannot inject into Apple's
+    # platform binaries (which are arm64e on Apple Silicon).
+    ENV.permit_arch_flags
     system "make", "PREFIX=#{prefix}", "install"
   end
 
