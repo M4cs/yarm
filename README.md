@@ -74,6 +74,32 @@ yarm targets mode third-party
 # reboot
 ```
 
+## Compatibility matrix
+
+What gets injected under each SIP / AMFI combination. The combination "SIP on, AMFI armed" is impossible — `nvram boot-args` writes are blocked by SIP, so you can't set `amfi_get_out_of_my_way=1` without first running `csrutil disable`.
+
+App categories used in the table:
+
+- **3P, no HR** — third-party app without hardened runtime. Older indie apps, some unsigned tools.
+- **3P, HR + LV-disable** — hardened runtime *with* `com.apple.security.cs.disable-library-validation`. Most Electron apps and developer tools: VS Code, Discord, Cursor, Arc, iTerm, Ghostty, Spotify, Zen.
+- **3P, HR strict** — hardened runtime *without* the LV-disable entitlement. Many App Store third-party apps.
+- **Apple, non-cryptex** — Apple-signed platform binaries that live on the data volume (some utilities, some bundled apps).
+- **Apple, cryptex** — Apple apps shipped inside the system cryptex: Safari, Mail, Finder, App Store, most of system UI. These enforce library validation at the kernel codesign layer, which `amfi_get_out_of_my_way` does **not** bypass.
+
+| State                                              | yarm mode      | 3P, no HR | 3P, HR + LV-disable | 3P, HR strict | Apple, non-cryptex | Apple, cryptex |
+|----------------------------------------------------|----------------|:---------:|:-------------------:|:-------------:|:------------------:|:--------------:|
+| SIP on, AMFI enforcing *(default)*                 | `third-party`  | ✅        | ✅                  | ❌            | ❌                 | ❌             |
+| SIP off, AMFI enforcing                            | `third-party`  | ✅        | ✅                  | ❌            | ❌                 | ❌             |
+| SIP off, AMFI armed (`amfi_get_out_of_my_way=1`)   | `all`          | ✅        | ✅                  | ✅            | ✅                 | ❌             |
+| SIP off, AMFI armed + cryptex re-signed *(manual)* | `all` + fork   | ✅        | ✅                  | ✅            | ✅                 | ✅             |
+
+Notes:
+
+- **SIP off alone changes nothing for injection coverage.** It only unlocks the ability to set the AMFI boot-arg and to modify SIP-protected files. If you're staying in `third-party` mode, leaving SIP enabled is functionally identical and strictly safer.
+- **`amfi_get_out_of_my_way=1` requires SIP off**, but SIP-off does not imply AMFI-armed. They are independent toggles with SIP gating the second.
+- **Cryptex coverage is not scripted by yarm.** It needs `csrutil authenticated-root disable` plus a re-signed cryptex; see [Going further](#going-further).
+- The "yarm mode" column shows what `[injection].mode` you'd set in `config.toml`. `mode = "all"` on a machine that doesn't have AMFI armed is just a slower `third-party` — the kernel still strips `DYLD_INSERT_LIBRARIES` from platform binaries.
+
 ## Use
 
 ```sh
